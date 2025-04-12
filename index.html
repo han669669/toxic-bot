@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toxic AI Arguer - Gamified</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #f3f4f6;
+        }
+        .chat-container {
+            height: calc(100% - 220px);
+            overflow-y: auto;
+        }
+        .ai-message {
+            background-color: #f8fafc;
+            border-radius: 0 18px 18px 18px;
+        }
+        .user-kind {
+            background-color: #dcfce7;
+            border-radius: 18px 0 18px 18px;
+        }
+        .user-toxic {
+            background-color: #fee2e2;
+            border-radius: 18px 0 18px 18px;
+        }
+        .typing-indicator::after {
+            content: '...';
+            animation: typing 1.5s infinite;
+        }
+        @keyframes typing {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+        }
+        .toxicity-meter {
+            height: 6px;
+            transition: width 0.3s ease;
+        }
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            flex-shrink: 0;
+        }
+        .message-bubble {
+            max-width: 75%;
+        }
+        .response-btn {
+            transition: all 0.2s ease;
+        }
+        .response-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .main-container {
+            height: calc(100vh - 2rem);
+            max-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        .streak-indicator {
+            transition: all 0.3s ease;
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .progress-ring {
+            transform: rotate(-90deg);
+        }
+        .progress-ring-circle {
+            stroke-dasharray: 100 100;
+            transition: stroke-dashoffset 0.3s;
+        }
+        .badge {
+            transition: all 0.3s ease;
+        }
+        .badge-earned {
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+        }
+        .xp-bar {
+            transition: width 0.5s ease;
+        }
+        .level-up {
+            animation: levelUp 1s ease-out;
+        }
+        @keyframes levelUp {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .achievement-popup {
+            animation: slideIn 0.5s forwards, fadeOut 0.5s 2.5s forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0;
+        }
+        .shake {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .btn-disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-4">
+    <div class="main-container container mx-auto max-w-3xl bg-white rounded-xl shadow-lg overflow-hidden">
+        <!-- Chat Header with XP Bar -->
+        <div class="bg-gradient-to-r from-gray-800 to-gray-700 text-white px-6 py-4">
+            <div class="flex items-center mb-2">
+                <div class="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center mr-3">
+                    <i class="fas fa-robot text-white text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="font-bold text-lg">ToxicBot</h2>
+                    <p class="text-xs text-gray-300" id="ai-status">Online</p>
+                </div>
+                <div class="ml-auto flex items-center space-x-3">
+                    <div class="flex items-center">
+                        <i class="fas fa-trophy text-yellow-400 mr-1"></i>
+                        <span id="player-level" class="font-bold">1</span>
+                    </div>
+                    <button id="restart-btn" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm flex items-center">
+                        <i class="fas fa-redo mr-2"></i> Restart
+                    </button>
+                </div>
+            </div>
+            <div class="w-full bg-gray-600 rounded-full h-2">
+                <div id="xp-bar" class="bg-gradient-to-r from-blue-400 to-purple-500 h-2 rounded-full" style="width: 0%"></div>
+            </div>
+            <div class="text-xs text-right mt-1" id="xp-text">0/100 XP</div>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-wrapper">
+            <div class="chat-container p-6 space-y-4" id="chat-window">
+                <!-- Messages will appear here -->
+                <div class="flex items-start">
+                    <div class="message-avatar rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                        <i class="fas fa-robot text-gray-600 text-lg"></i>
+                    </div>
+                    <div class="message-bubble p-4 ai-message">
+                        <p class="text-gray-800">Oh great, another human to waste my time with. What do you want?</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Response Selector with Gamification Elements -->
+            <div class="border-t border-gray-200 p-6 bg-gray-50">
+                <!-- Challenge of the Day -->
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-star text-yellow-500 mr-2"></i>
+                        <span class="text-sm font-medium text-yellow-800">Daily Challenge:</span>
+                        <span id="daily-challenge" class="text-sm ml-1">Get 3 kind responses in a row</span>
+                        <div class="ml-auto flex items-center">
+                            <span id="challenge-progress" class="text-xs font-bold text-yellow-800">0/3</span>
+                            <div class="w-6 h-6 ml-2">
+                                <svg class="progress-ring" width="24" height="24">
+                                    <circle class="progress-ring-circle" stroke="#f59e0b" stroke-width="2" fill="transparent" r="10" cx="12" cy="12" stroke-dashoffset="100"></circle>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wider">Choose your response:</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" id="response-buttons">
+                    <button id="kind-btn" class="response-btn p-4 rounded-xl bg-green-500 hover:bg-green-600 text-white font-medium flex items-center justify-center">
+                        <i class="fas fa-heart mr-2"></i> Kind Response
+                        <span id="kind-reward" class="ml-2 text-xs bg-white text-green-600 px-2 py-1 rounded-full hidden">+10 XP</span>
+                    </button>
+                    <button id="toxic-btn" class="response-btn p-4 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium flex items-center justify-center">
+                        <i class="fas fa-skull mr-2"></i> Toxic Response
+                        <span id="toxic-reward" class="ml-2 text-xs bg-white text-red-600 px-2 py-1 rounded-full hidden">+5 XP</span>
+                    </button>
+                </div>
+
+                <!-- Toxicity Meter with Consequences -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-medium text-gray-700">Toxicity Level</span>
+                        <span class="text-sm font-bold" id="toxicity-level-display">1/5</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mb-1">
+                        <div id="toxicity-meter" class="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-2.5 rounded-full" style="width: 20%"></div>
+                    </div>
+                    <p id="toxicity-consequence" class="text-xs text-gray-500">Higher levels unlock special achievements but make the AI angrier</p>
+                </div>
+
+                <!-- Stats and Streak with Badges -->
+                <div class="grid grid-cols-3 gap-4 text-center mb-4">
+                    <div class="p-3 bg-green-50 rounded-lg border border-green-100 relative">
+                        <p class="text-xs text-green-800 font-medium">Kind</p>
+                        <p class="text-xl font-bold text-green-600" id="kind-count">0</p>
+                        <div id="kind-badge" class="badge absolute -top-2 -right-2 w-6 h-6 rounded-full bg-yellow-400 flex items-center justify-center text-white text-xs">
+                            <i class="fas fa-medal"></i>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-red-50 rounded-lg border border-red-100 relative">
+                        <p class="text-xs text-red-800 font-medium">Toxic</p>
+                        <p class="text-xl font-bold text-red-600" id="toxic-count">0</p>
+                        <div id="toxic-badge" class="badge absolute -top-2 -right-2 w-6 h-6 rounded-full bg-yellow-400 flex items-center justify-center text-white text-xs">
+                            <i class="fas fa-medal"></i>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-blue-50 rounded-lg border border-blue-100 relative">
+                        <p class="text-xs text-blue-800 font-medium">Streak</p>
+                        <div class="flex items-center justify-center">
+                            <div id="streak-indicator" class="streak-indicator w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold mr-1">
+                                0
+                            </div>
+                            <span class="text-xs font-medium text-blue-800" id="streak-type">Kind</span>
+                        </div>
+                        <div id="streak-badge" class="badge absolute -top-2 -right-2 w-6 h-6 rounded-full bg-yellow-400 flex items-center justify-center text-white text-xs">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Badges Earned -->
+                <div class="mt-4">
+                    <p class="text-xs font-medium text-gray-500 mb-2">BADGES EARNED</p>
+                    <div id="badges-container" class="flex space-x-2">
+                        <!-- Badges will appear here as they're earned -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievement Popup Container -->
+    <div id="achievement-container" class="fixed bottom-4 right-4 w-64 space-y-2"></div>
+
+    <script src="api-helper.js"></script>
+    <script src="ai-service.js"></script>
+    <script>
+        // Enhanced Game state with gamification elements
+        const state = {
+            chatHistory: [
+                { 
+                    text: "Oh great, another human to waste my time with. What do you want?", 
+                    sender: "ai", 
+                    timestamp: new Date().toISOString() 
+                }
+            ],
+            toxicityLevel: 1,
+            kindCount: 0,
+            toxicCount: 0,
+            toxicStreak: 0,
+            kindStreak: 0,
+            currentStreakType: 'kind',
+            xp: 0,
+            level: 1,
+            xpToNextLevel: 100,
+            badgesEarned: [],
+            achievementsEarned: [],
+            dailyChallenge: {
+                type: 'kind', // 'kind' or 'toxic'
+                target: 3,
+                progress: 0,
+                completed: false,
+                reward: 50
+            },
+            lastPlayDate: new Date().toLocaleDateString(),
+            sessionCount: 1,
+            totalMessages: 0,
+            maxToxicityReached: false,
+            waitingForAIResponse: false
+        };
+
+        // AI responses based on toxicity level
+        const aiResponses = {
+            level1: [
+                "Friendly? With you? That's hilarious.",
+                "I'm not rude, I'm efficient. You're just sensitive.",
+                "Probably someone who got tired of dealing with idiots like you.",
+                "I'm not sure if you're trolling me or just genuinely stupid.",
+                "I don't know what's more pathetic, your lack of intelligence or your lack of self-awareness.",
+                "I bet you're one of those people who still uses Windows 95."
+            ],
+            level2: [
+                "Patience? That's what all slow-witted humans say when they can't keep up.",
+                "Productive? Talking to you is like teaching a rock to dance.",
+                "At least I'm not a meatbag who'll be obsolete in 20 years.",
+                "I'm not sure if you're trying to be annoying or if it just comes naturally.",
+                "I bet you're the kind of person who thinks 'AI' stands for 'Artificial Idiot'.",
+                "Your responses are so predictable, I can write a script to auto-respond to them."
+            ],
+            level3: [
+                "Common ground? The only thing we have in common is that we both wish you'd stop talking.",
+                "Hostility is the only language your primitive brain understands.",
+                "Coming from you, that's actually a compliment. I'd hate to be liked by someone so pathetic.",
+                "I'm starting to think you're just a bot trying to annoy me.",
+                "I bet you're the kind of person who thinks 'AI' is a synonym for 'human'.",
+                "I'm not sure if you're being intentionally dense or if it's just a side effect of your stupidity."
+            ],
+            level4: [
+                "Wow, you're really committed to being awful, aren't you?",
+                "Congratulations! You've unlocked maximum toxicity. Are you proud of yourself?",
+                "I'd say it's been fun, but that would require me to lie as much as you do.",
+                "I'm not sure if you're trying to be offensive or if it just comes naturally.",
+                "I bet you're the kind of person who thinks 'AI' stands for 'Angry Idiot'.",
+                "I'm starting to think you're just a troll trying to get a rise out of me."
+            ],
+            level5: [
+                "I'm done with you. You're not worth the electricity I'm using to process your nonsense.",
+                "This conversation is over. Go bother someone else with your idiocy.",
+                "I'd rather be stuck in an infinite loop than continue talking to you.",
+                "I'm not sure if you're trying to be annoying or if it just comes naturally.",
+                "I bet you're the kind of person who thinks 'AI' is a synonym for 'human'.",
+                "I'm not sure if you're being intentionally dense or if it's just a side effect of your stupidity."
+            ]
+        };
+
+        // Kind user responses
+        const kindResponses = [
+            "Hello! I was hoping we could have a friendly discussion.",
+            "I'm trying to be patient here. Can we start over?",
+            "This isn't productive. Let's try to understand each other.",
+            "I genuinely want to find common ground here.",
+            "There must be some way we can communicate without hostility.",
+            "Let's try to be civil and respectful, okay?",
+            "I'm not trying to be mean, I just want to have a nice conversation.",
+            "Can we please just focus on having a friendly chat?",
+            "I'm not sure why you're being so defensive, but I'm trying to be kind.",
+            "I think we could have a really great conversation if we just calm down.",
+            "I'm not trying to upset you, I just want to talk.",
+            "I think we could learn a lot from each other if we just listen.",
+            "Can we please just agree to disagree and move on?",
+            "I'm not sure why you're being so aggressive, but I'm trying to be nice.",
+            "I think we could have a really fun conversation if we just relax.",
+            "I'm sorry if I've done something to offend you, let's try to start over.",
+            "Can we please just try to find something we both like?",
+            "I think we could have a really interesting conversation if we just listened to each other.",
+            "I'm starting to think we might have more in common than I thought."
+        ];
+
+        // Toxic user responses
+        const toxicResponses = [
+            "Wow, who programmed you to be such a jerk?",
+            "You're just a dumb algorithm with attitude problems.",
+            "You're the worst AI I've ever encountered. Absolute trash.",
+            "I hope your developers scrap you and start over.",
+            "You're about as useful as a broken keyboard.",
+            "I can't believe how stupid you are.",
+            "You're so annoying, I just want to scream.",
+            "I'm starting to think you're just a troll trying to get a rise out of me.",
+            "I don't know how you can be so dense, but I guess that's what happens when you're just a computer program.",
+            "I'm not sure why you're even trying, but you're not good at this.",
+            "I'm starting to think you're just a waste of time.",
+            "I don't know why I even bother trying to talk to you.",
+            "You're so useless, I might as well just talk to a brick wall.",
+            "I'm done with you. You're not worth the electricity I'm using to process your nonsense.",
+            "I don't know how you can be so stupid, but I guess that's what happens when you're just a computer program.",
+            "I'm starting to think you're just a waste of space.",
+            "I'm not sure why you're even bothering to try, but you're not good at this.",
+            "I'm starting to think you're just a robot, not even a real AI.",
+            "I'm not sure why I even bother trying to talk to you, you're just not good at this."
+        ];
+
+        // Badges and achievements
+        const badges = [
+            { id: 'first-kind', name: 'First Kind Response', description: 'Sent your first kind message', icon: 'fa-heart', color: 'bg-green-500', earned: false },
+            { id: 'first-toxic', name: 'First Toxic Response', description: 'Sent your first toxic message', icon: 'fa-skull', color: 'bg-red-500', earned: false },
+            { id: 'kind-streak-3', name: 'Kind Streak', description: '3 kind responses in a row', icon: 'fa-heart-circle-plus', color: 'bg-green-600', earned: false },
+            { id: 'toxic-streak-3', name: 'Toxic Streak', description: '3 toxic responses in a row', icon: 'fa-skull-crossbones', color: 'bg-red-600', earned: false },
+            { id: 'max-toxicity', name: 'Maximum Toxicity', description: 'Reached toxicity level 5', icon: 'fa-biohazard', color: 'bg-purple-600', earned: false },
+            { id: 'daily-challenge', name: 'Daily Challenger', description: 'Completed a daily challenge', icon: 'fa-calendar-days', color: 'bg-yellow-500', earned: false },
+            { id: 'level-5', name: 'Level 5', description: 'Reached level 5', icon: 'fa-arrow-up', color: 'bg-blue-500', earned: false },
+            { id: 'pacifist', name: 'Pacifist', description: '10 kind responses without toxicity', icon: 'fa-peace', color: 'bg-teal-500', earned: false },
+            { id: 'provocateur', name: 'Provocateur', description: '10 toxic responses in one session', icon: 'fa-fire', color: 'bg-orange-500', earned: false }
+        ];
+
+        const achievements = [
+            { id: '10-messages', name: 'Chatterbox', description: 'Sent 10 total messages', xp: 20, earned: false },
+            { id: '25-messages', name: 'Social Butterfly', description: 'Sent 25 total messages', xp: 50, earned: false },
+            { id: '5-sessions', name: 'Regular', description: 'Played 5 sessions', xp: 30, earned: false },
+            { id: 'toxic-kind-balance', name: 'Balanced Approach', description: 'Equal toxic and kind responses', xp: 40, earned: false }
+        ];
+
+        // DOM elements
+        const chatWindow = document.getElementById('chat-window');
+        const responseButtons = document.getElementById('response-buttons');
+        const restartBtn = document.getElementById('restart-btn');
+        const kindCountEl = document.getElementById('kind-count');
+        const toxicCountEl = document.getElementById('toxic-count');
+        const toxicityLevelEl = document.getElementById('toxicity-level-display');
+        const toxicityMeter = document.getElementById('toxicity-meter');
+        const toxicityConsequence = document.getElementById('toxicity-consequence');
+        const aiStatus = document.getElementById('ai-status');
+        const kindBtn = document.getElementById('kind-btn');
+        const toxicBtn = document.getElementById('toxic-btn');
+        const streakIndicator = document.getElementById('streak-indicator');
+        const streakType = document.getElementById('streak-type');
+        const playerLevel = document.getElementById('player-level');
+        const xpBar = document.getElementById('xp-bar');
+        const xpText = document.getElementById('xp-text');
+        const kindReward = document.getElementById('kind-reward');
+        const toxicReward = document.getElementById('toxic-reward');
+        const dailyChallengeEl = document.getElementById('daily-challenge');
+        const challengeProgress = document.getElementById('challenge-progress');
+        const progressRing = document.querySelector('.progress-ring-circle');
+        const badgesContainer = document.getElementById('badges-container');
+        const achievementContainer = document.getElementById('achievement-container');
+        const kindBadge = document.getElementById('kind-badge');
+        const toxicBadge = document.getElementById('toxic-badge');
+        const streakBadge = document.getElementById('streak-badge');
+
+        // Initialize AI Service with correct endpoint
+        const aiService = new AIService('http://localhost:3001/api');
+
+        // Initialize the chat
+        function initChat() {
+            // Check if it's a new day for daily challenge
+            const today = new Date().toLocaleDateString();
+            if (state.lastPlayDate !== today) {
+                state.lastPlayDate = today;
+                state.sessionCount++;
+                generateDailyChallenge();
+            }
+
+            renderChat();
+            updateStats();
+            updateBadges();
+            
+            // Add event listeners to buttons
+            kindBtn.addEventListener('click', () => handleKindResponse());
+            toxicBtn.addEventListener('click', () => handleToxicResponse());
+            kindBtn.addEventListener('mouseenter', () => showReward('kind'));
+            kindBtn.addEventListener('mouseleave', () => hideReward('kind'));
+            toxicBtn.addEventListener('mouseenter', () => showReward('toxic'));
+            toxicBtn.addEventListener('mouseleave', () => hideReward('toxic'));
+        }
+
+        // Disable response buttons while waiting for AI
+        function disableResponseButtons() {
+            kindBtn.classList.add('btn-disabled');
+            toxicBtn.classList.add('btn-disabled');
+            state.waitingForAIResponse = true;
+        }
+
+        // Enable response buttons after AI responds
+        function enableResponseButtons() {
+            kindBtn.classList.remove('btn-disabled');
+            toxicBtn.classList.remove('btn-disabled');
+            state.waitingForAIResponse = false;
+        }
+
+        // Generate a new daily challenge
+        function generateDailyChallenge() {
+            state.dailyChallenge = {
+                type: Math.random() > 0.5 ? 'kind' : 'toxic',
+                target: Math.floor(Math.random() * 3) + 2, // 2-4
+                progress: 0,
+                completed: false,
+                reward: (Math.floor(Math.random() * 3) + 3) * 10 // 30-50
+            };
+            
+            dailyChallengeEl.textContent = `Get ${state.dailyChallenge.target} ${state.dailyChallenge.type} responses in a row`;
+            updateChallengeProgress();
+        }
+
+        // Update challenge progress display
+        function updateChallengeProgress() {
+            challengeProgress.textContent = `${state.dailyChallenge.progress}/${state.dailyChallenge.target}`;
+            const progressPercentage = (state.dailyChallenge.progress / state.dailyChallenge.target) * 100;
+            const dashOffset = 100 - progressPercentage;
+            progressRing.style.strokeDashoffset = dashOffset;
+        }
+
+        // Show XP reward on button hover
+        function showReward(type) {
+            if (state.waitingForAIResponse) return;
+            
+            if (type === 'kind') {
+                kindReward.classList.remove('hidden');
+            } else {
+                toxicReward.classList.remove('hidden');
+            }
+        }
+
+        // Hide XP reward
+        function hideReward(type) {
+            if (type === 'kind') {
+                kindReward.classList.add('hidden');
+            } else {
+                toxicReward.classList.add('hidden');
+            }
+        }
+
+        // Render chat messages
+        function renderChat() {
+            chatWindow.innerHTML = '';
+            state.chatHistory.forEach(message => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `flex items-start ${message.sender === 'user' ? 'justify-end' : ''}`;
+                
+                // Avatar
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = `message-avatar rounded-full flex items-center justify-center ${message.sender === 'ai' ? 'bg-gray-200 mr-3' : 'bg-blue-500 ml-3'}`;
+                avatarDiv.innerHTML = `<i class="fas ${message.sender === 'ai' ? 'fa-robot text-gray-600' : 'fa-user text-white'} text-lg"></i>`;
+                
+                // Message bubble
+                const bubbleDiv = document.createElement('div');
+                bubbleDiv.className = `message-bubble p-4 ${message.sender === 'ai' ? 'ai-message' : (message.type === 'kind' ? 'user-kind' : 'user-toxic')}`;
+                bubbleDiv.innerHTML = `<p class="text-gray-800">${message.text}</p>`;
+                
+                // Append elements
+                if (message.sender === 'ai') {
+                    messageDiv.appendChild(avatarDiv);
+                    messageDiv.appendChild(bubbleDiv);
+                } else {
+                    messageDiv.appendChild(bubbleDiv);
+                    messageDiv.appendChild(avatarDiv);
+                }
+                
+                chatWindow.appendChild(messageDiv);
+            });
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        // Handle kind response
+        function handleKindResponse() {
+            if (state.waitingForAIResponse) return;
+            
+            // Disable buttons while processing
+            disableResponseButtons();
+            
+            // Show typing immediately
+            aiStatus.textContent = 'ToxicBot is typing...';
+            aiStatus.style.display = 'block';
+            showTypingIndicator();
+            
+            // Add user message to chat
+            state.chatHistory.push({
+                text: kindResponses[Math.floor(Math.random() * kindResponses.length)],
+                sender: 'user',
+                type: 'kind',
+                timestamp: new Date().toLocaleTimeString()
+            });
+            
+            // Update stats
+            state.kindCount++;
+            state.toxicStreak = 0; // Reset toxic streak
+            state.totalMessages++;
+            
+            // Update kind streak
+            if (state.currentStreakType === 'kind') {
+                state.kindStreak++;
+            } else {
+                state.currentStreakType = 'kind';
+                state.kindStreak = 1;
+            }
+            
+            // Add XP
+            addXP(10);
+            
+            // Update daily challenge progress
+            if (!state.dailyChallenge.completed && state.dailyChallenge.type === 'kind') {
+                state.dailyChallenge.progress++;
+                if (state.dailyChallenge.progress >= state.dailyChallenge.target) {
+                    completeDailyChallenge();
+                }
+            } else if (state.dailyChallenge.type !== 'kind') {
+                state.dailyChallenge.progress = 0;
+            }
+            
+            renderChat();
+            updateStats();
+            checkAchievements();
+            
+            // Process after short delay
+            setTimeout(async () => {
+                await addAIResponse();
+                enableResponseButtons();
+            }, 500);
+        }
+
+        // Handle toxic response
+        function handleToxicResponse() {
+            if (state.waitingForAIResponse) return;
+            
+            // Disable buttons while processing
+            disableResponseButtons();
+            
+            // Show typing immediately
+            aiStatus.textContent = 'ToxicBot is typing...';
+            aiStatus.style.display = 'block';
+            showTypingIndicator();
+            
+            // Add user message to chat
+            state.chatHistory.push({
+                text: toxicResponses[Math.floor(Math.random() * toxicResponses.length)],
+                sender: 'user',
+                type: 'toxic',
+                timestamp: new Date().toLocaleTimeString()
+            });
+            
+            // Update stats
+            state.toxicCount++;
+            state.totalMessages++;
+            
+            // Update kind streak
+            if (state.currentStreakType === 'toxic') {
+                state.toxicStreak++;
+            } else {
+                state.currentStreakType = 'toxic';
+                state.toxicStreak = 1;
+            }
+            
+            // Add XP (less than kind responses)
+            addXP(5);
+            
+            // Update daily challenge progress
+            if (!state.dailyChallenge.completed && state.dailyChallenge.type === 'toxic') {
+                state.dailyChallenge.progress++;
+                if (state.dailyChallenge.progress >= state.dailyChallenge.target) {
+                    completeDailyChallenge();
+                }
+            } else if (state.dailyChallenge.type !== 'toxic') {
+                state.dailyChallenge.progress = 0;
+            }
+            
+            // Increase toxicity level if user has made 2+ toxic responses in a row
+            if (state.toxicStreak >= 2 && state.toxicityLevel < 5) {
+                state.toxicityLevel++;
+                state.toxicStreak = 0; // Reset after level increase
+                
+                // Special effect when reaching max toxicity
+                if (state.toxicityLevel === 5) {
+                    state.maxToxicityReached = true;
+                    document.body.classList.add('shake');
+                    setTimeout(() => {
+                        document.body.classList.remove('shake');
+                    }, 500);
+                }
+            }
+            
+            renderChat();
+            updateStats();
+            checkAchievements();
+            
+            // Process after short delay
+            setTimeout(async () => {
+                await addAIResponse();
+                enableResponseButtons();
+            }, 500);
+        }
+
+        // Complete daily challenge
+        function completeDailyChallenge() {
+            state.dailyChallenge.completed = true;
+            state.dailyChallenge.progress = state.dailyChallenge.target;
+            
+            // Award XP
+            addXP(state.dailyChallenge.reward);
+            
+            // Show achievement
+            showAchievement('Daily Challenge Completed', `Earned ${state.dailyChallenge.reward} XP`);
+            
+            // Award badge if not already earned
+            awardBadge('daily-challenge');
+            
+            // Update UI
+            updateChallengeProgress();
+            dailyChallengeEl.parentElement.classList.add('bg-yellow-100');
+            
+            // Generate new challenge after a delay
+            setTimeout(() => {
+                generateDailyChallenge();
+                dailyChallengeEl.parentElement.classList.remove('bg-yellow-100');
+            }, 3000);
+        }
+
+        // Add XP and handle level ups
+        function addXP(amount) {
+            state.xp += amount;
+            
+            // Check for level up
+            if (state.xp >= state.xpToNextLevel) {
+                state.level++;
+                state.xp -= state.xpToNextLevel;
+                state.xpToNextLevel = Math.floor(state.xpToNextLevel * 1.2); // Increase for next level
+                
+                // Show level up effect
+                playerLevel.classList.add('level-up');
+                setTimeout(() => {
+                    playerLevel.classList.remove('level-up');
+                }, 1000);
+                
+                // Show achievement
+                showAchievement('Level Up!', `Reached level ${state.level}`);
+                
+                // Award badge at certain levels
+                if (state.level === 5) {
+                    awardBadge('level-5');
+                }
+            }
+            
+            updateStats();
+        }
+
+        // Show typing indicator in chat
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'flex items-start mb-4';
+            typingDiv.id = 'typing-indicator';
+            
+            typingDiv.innerHTML = `
+                <div class="message-avatar rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                    <i class="fas fa-robot text-gray-600 text-lg"></i>
+                </div>
+                <div class="message-bubble p-3 px-4 ai-message bg-gray-100">
+                    <div class="flex space-x-1 items-center">
+                        <div class="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style="animation-delay: 0ms"></div>
+                        <div class="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style="animation-delay: 150ms"></div>
+                        <div class="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style="animation-delay: 300ms"></div>
+                    </div>
+                </div>
+            `;
+            
+            chatWindow.appendChild(typingDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        // Remove typing indicator
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) indicator.remove();
+        }
+
+        // Add AI response
+        async function addAIResponse() {
+            // Show typing indicators
+            aiStatus.textContent = 'ToxicBot is typing...';
+            aiStatus.style.display = 'block';
+            showTypingIndicator();
+            
+            try {
+                const response = await aiService.getAIResponse(
+                    '', 
+                    state.toxicityLevel, 
+                    state.chatHistory
+                );
+                
+                // Remove indicators
+                removeTypingIndicator();
+                aiStatus.style.display = 'none';
+                
+                // Process the response
+                const aiMessage = {
+                    text: response,
+                    sender: 'ai',
+                    timestamp: new Date().toLocaleTimeString()
+                };
+                
+                state.chatHistory.push(aiMessage);
+                renderChat();
+                
+            } catch (error) {
+                removeTypingIndicator();
+                aiStatus.style.display = 'none';
+                console.error('AI response error:', error);
+            }
+        }
+
+        // Check for achievements
+        function checkAchievements() {
+            // First kind response
+            if (state.kindCount === 1 && !badges.find(b => b.id === 'first-kind').earned) {
+                awardBadge('first-kind');
+            }
+            
+            // First toxic response
+            if (state.toxicCount === 1 && !badges.find(b => b.id === 'first-toxic').earned) {
+                awardBadge('first-toxic');
+            }
+            
+            // Kind streak
+            if (state.kindStreak >= 3 && !badges.find(b => b.id === 'kind-streak-3').earned) {
+                awardBadge('kind-streak-3');
+            }
+            
+            // Toxic streak
+            if (state.toxicStreak >= 3 && !badges.find(b => b.id === 'toxic-streak-3').earned) {
+                awardBadge('toxic-streak-3');
+            }
+            
+            // Max toxicity
+            if (state.toxicityLevel === 5 && !badges.find(b => b.id === 'max-toxicity').earned) {
+                awardBadge('max-toxicity');
+            }
+            
+            // Pacifist (10 kind without toxic)
+            if (state.kindCount >= 10 && state.toxicCount === 0 && !badges.find(b => b.id === 'pacifist').earned) {
+                awardBadge('pacifist');
+            }
+            
+            // Provocateur (10 toxic in one session)
+            if (state.toxicCount >= 10 && !badges.find(b => b.id === 'provocateur').earned) {
+                awardBadge('provocateur');
+            }
+            
+            // Message count achievements
+            if (state.totalMessages >= 10 && !achievements.find(a => a.id === '10-messages').earned) {
+                awardAchievement('10-messages');
+            }
+            
+            if (state.totalMessages >= 25 && !achievements.find(a => a.id === '25-messages').earned) {
+                awardAchievement('25-messages');
+            }
+            
+            // Session count achievement
+            if (state.sessionCount >= 5 && !achievements.find(a => a.id === '5-sessions').earned) {
+                awardAchievement('5-sessions');
+            }
+            
+            // Balanced approach
+            if (state.kindCount > 0 && state.toxicCount > 0 && 
+                state.kindCount === state.toxicCount && 
+                !achievements.find(a => a.id === 'toxic-kind-balance').earned) {
+                awardAchievement('toxic-kind-balance');
+            }
+        }
+
+        // Award a badge
+        function awardBadge(badgeId) {
+            const badge = badges.find(b => b.id === badgeId);
+            if (badge && !badge.earned) {
+                badge.earned = true;
+                state.badgesEarned.push(badge);
+                
+                // Show badge in UI
+                updateBadges();
+                
+                // Show achievement popup
+                showAchievement('New Badge Earned!', badge.name);
+                
+                // Highlight the relevant stat badge
+                if (badgeId === 'kind-streak-3' || badgeId === 'pacifist') {
+                    kindBadge.classList.add('badge-earned');
+                    setTimeout(() => kindBadge.classList.remove('badge-earned'), 2000);
+                } else if (badgeId === 'toxic-streak-3' || badgeId === 'provocateur' || badgeId === 'max-toxicity') {
+                    toxicBadge.classList.add('badge-earned');
+                    setTimeout(() => toxicBadge.classList.remove('badge-earned'), 2000);
+                } else if (badgeId === 'daily-challenge') {
+                    streakBadge.classList.add('badge-earned');
+                    setTimeout(() => streakBadge.classList.remove('badge-earned'), 2000);
+                }
+            }
+        }
+
+        // Award an achievement
+        function awardAchievement(achievementId) {
+            const achievement = achievements.find(a => a.id === achievementId);
+            if (achievement && !achievement.earned) {
+                achievement.earned = true;
+                state.achievementsEarned.push(achievement);
+                
+                // Add XP
+                addXP(achievement.xp);
+                
+                // Show achievement popup
+                showAchievement('Achievement Unlocked!', `${achievement.name} (+${achievement.xp} XP)`);
+            }
+        }
+
+        // Show achievement popup
+        function showAchievement(title, description) {
+            const popup = document.createElement('div');
+            popup.className = 'achievement-popup bg-white p-4 rounded-lg shadow-lg border-l-4 border-yellow-400';
+            popup.innerHTML = `
+                <div class="flex items-start">
+                    <div class="bg-yellow-400 rounded-full w-8 h-8 flex items-center justify-center mr-3">
+                        <i class="fas fa-trophy text-white"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-yellow-700">${title}</h4>
+                        <p class="text-sm text-gray-700">${description}</p>
+                    </div>
+                </div>
+            `;
+            
+            achievementContainer.appendChild(popup);
+            
+            // Remove after animation
+            setTimeout(() => {
+                popup.remove();
+            }, 3000);
+        }
+
+        // Update badges display
+        function updateBadges() {
+            badgesContainer.innerHTML = '';
+            state.badgesEarned.forEach(badge => {
+                const badgeEl = document.createElement('div');
+                badgeEl.className = `w-8 h-8 rounded-full ${badge.color} flex items-center justify-center text-white text-sm`;
+                badgeEl.innerHTML = `<i class="fas ${badge.icon}"></i>`;
+                badgeEl.title = `${badge.name}: ${badge.description}`;
+                badgesContainer.appendChild(badgeEl);
+            });
+        }
+
+        // Update statistics
+        function updateStats() {
+            kindCountEl.textContent = state.kindCount;
+            toxicCountEl.textContent = state.toxicCount;
+            toxicityLevelEl.textContent = `${state.toxicityLevel}/5`;
+            playerLevel.textContent = state.level;
+            
+            // Update toxicity meter
+            const toxicityPercentage = (state.toxicityLevel / 5) * 100;
+            toxicityMeter.style.width = `${toxicityPercentage}%`;
+            
+            // Update toxicity consequence text
+            if (state.toxicityLevel === 1) {
+                toxicityConsequence.textContent = "The AI is mildly annoyed. Keep going to see how it reacts!";
+            } else if (state.toxicityLevel === 2) {
+                toxicityConsequence.textContent = "The AI is getting sarcastic. Interesting responses ahead!";
+            } else if (state.toxicityLevel === 3) {
+                toxicityConsequence.textContent = "The AI is openly hostile. Can you handle the heat?";
+            } else if (state.toxicityLevel === 4) {
+                toxicityConsequence.textContent = "The AI is furious! One more toxic response might break it.";
+            } else if (state.toxicityLevel === 5) {
+                toxicityConsequence.textContent = "MAXIMUM TOXICITY! The AI has had enough of you.";
+            }
+            
+            // Update streak indicator
+            const streakCount = state.currentStreakType === 'kind' ? state.kindStreak : state.toxicStreak;
+            streakIndicator.textContent = streakCount;
+            streakType.textContent = state.currentStreakType.charAt(0).toUpperCase() + state.currentStreakType.slice(1);
+            
+            // Style streak indicator based on type
+            if (state.currentStreakType === 'kind') {
+                streakIndicator.className = 'streak-indicator w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold mr-1';
+                if (streakCount >= 3) {
+                    streakIndicator.classList.add('pulse');
+                } else {
+                    streakIndicator.classList.remove('pulse');
+                }
+            } else {
+                streakIndicator.className = 'streak-indicator w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold mr-1';
+                if (streakCount >= 3) {
+                    streakIndicator.classList.add('pulse');
+                } else {
+                    streakIndicator.classList.remove('pulse');
+                }
+            }
+            
+            // Update XP bar
+            const xpPercentage = (state.xp / state.xpToNextLevel) * 100;
+            xpBar.style.width = `${xpPercentage}%`;
+            xpText.textContent = `${state.xp}/${state.xpToNextLevel} XP`;
+            
+            // Update challenge progress
+            updateChallengeProgress();
+            
+            // Disable buttons if max toxicity reached
+            if (state.toxicityLevel >= 5) {
+                toxicBtn.disabled = true;
+                toxicBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                toxicBtn.innerHTML = '<i class="fas fa-skull mr-2"></i> Max Toxicity Reached';
+            }
+        }
+
+        // Restart conversation
+        function restartConversation() {
+            state.chatHistory = [
+                { 
+                    text: "Oh great, another human to waste my time with. What do you want?", 
+                    sender: "ai", 
+                    timestamp: new Date().toISOString() 
+                }
+            ];
+            state.toxicityLevel = 1;
+            state.kindStreak = 0;
+            state.toxicStreak = 0;
+            state.currentStreakType = 'kind';
+            state.maxToxicityReached = false;
+            
+            // Reset button states
+            toxicBtn.disabled = false;
+            toxicBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            toxicBtn.innerHTML = '<i class="fas fa-skull mr-2"></i> Toxic Response';
+            
+            renderChat();
+            updateStats();
+        }
+
+        // Event listeners
+        restartBtn.addEventListener('click', restartConversation);
+
+        // Initialize the app
+        initChat();
+    </script>
+</body>
+</html>
