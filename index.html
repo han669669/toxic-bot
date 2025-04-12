@@ -276,9 +276,7 @@
         import AIService from '/ai-service.js';
         
         document.addEventListener('DOMContentLoaded', () => {
-            const aiService = new AIService(process.env.VERCEL_URL ? 
-              `https://${process.env.VERCEL_URL}/api` : 
-              'http://localhost:3001/api');
+            const aiService = new AIService(window.location.origin + '/api');
             window.aiService = aiService;
             initChat();
         });

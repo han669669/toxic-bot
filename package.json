@@ -8,7 +8,8 @@
     "start:proxy": "node backend-proxy.js",
     "start:client": "serve -l 3000",
     "dev": "concurrently \"npm run start:proxy\" \"serve -l 3000\"",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:deployed": "curl -v ${DEPLOYED_URL}/ai-service.js -H 'Accept: text/javascript'"
   },
   "keywords": [],
   "author": "",
