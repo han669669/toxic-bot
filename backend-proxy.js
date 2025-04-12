@@ -4,6 +4,8 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet'); // Add helmet middleware
 require('dotenv').config();
 
+const PRODUCTION_URL = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
+
 const app = express();
 
 // Limit request size
@@ -51,7 +53,7 @@ app.use((req, res, next) => {
 });
 
 const API_KEY = process.env.CEREBRAS_API_KEY || 'your-api-key';
-const BASE_URL = 'https://api.cerebras.ai/v1';
+const BASE_URL = PRODUCTION_URL || 'https://api.cerebras.ai/v1';
 
 // Request validation middleware
 const validateRequest = (req, res, next) => {
@@ -80,34 +82,26 @@ app.use('/api', authLimiter);
 
 // Apply rate limiting and validation to API endpoint
 app.post('/api/chat', [validateRequest, limiter], async (req, res) => {
-    console.log('Received request:', req.body);
-    try {
-        const { messages, toxicityLevel } = req.body;
-        
-        console.log('Forwarding to Cerebras API:', {
-            model: 'llama3.1-8b',
-            messages,
-            toxicityLevel
-        });
-        
-        const response = await axios.post(`${BASE_URL}/chat/completions`, {
-            model: 'llama3.1-8b',
-            messages,
-            temperature: 0.7 + (toxicityLevel * 0.1),
-            max_tokens: 150
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_KEY}`
-            }
-        });
-        
-        console.log('Received response:', response.data);
-        res.json(response.data);
-    } catch (error) {
-        console.error('Proxy error:', error);
-        res.status(500).json({ error: 'AI request failed' });
-    }
+  try {
+    const response = await axios.post(
+      BASE_URL + '/chat/completions',
+      {
+        model: 'llama3.1-8b',
+        messages: req.body.messages,
+        max_tokens: 150
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.CEREBRAS_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    res.json(response.data);
+  } catch (error) {
+    console.error('API error:', error);
+    res.status(500).json({ error: 'Failed to get AI response' });
+  }
 });
 
 const PORT = process.env.PORT || 3001;

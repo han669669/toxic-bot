@@ -1,5 +1,6 @@
 class AIService {
-    constructor(baseUrl = 'http://localhost:3001/api') {
+    constructor(apiKey = '', baseUrl = 'http://localhost:3001/api') {
+        this.apiKey = apiKey;
         this.baseUrl = baseUrl;
     }
 
@@ -60,9 +61,4 @@ class AIService {
     }
 }
 
-// Export for browser use
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = AIService;
-} else {
-    window.AIService = AIService;
-}
+export { AIService as default };
