@@ -4,8 +4,6 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet'); // Add helmet middleware
 require('dotenv').config();
 
-const PRODUCTION_URL = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
-
 const app = express();
 
 // Limit request size
@@ -46,22 +44,14 @@ app.use(helmet({
 
 // Enable CORS
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = [
-    'http://localhost:3000',
-    `https://${process.env.VERCEL_URL}`
-  ];
-  
-  if (allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  next();
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    next();
 });
 
 const API_KEY = process.env.CEREBRAS_API_KEY || 'your-api-key';
-const BASE_URL = PRODUCTION_URL || 'https://api.cerebras.ai/v1';
+const BASE_URL = 'https://api.cerebras.ai/v1';
 
 // Request validation middleware
 const validateRequest = (req, res, next) => {
@@ -90,31 +80,34 @@ app.use('/api', authLimiter);
 
 // Apply rate limiting and validation to API endpoint
 app.post('/api/chat', [validateRequest, limiter], async (req, res) => {
-  try {
-    const response = await axios.post(
-      BASE_URL + '/chat/completions',
-      {
-        model: 'llama3.1-8b',
-        messages: req.body.messages,
-        max_tokens: 150
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.CEREBRAS_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    res.json(response.data);
-  } catch (error) {
-    console.error('API error:', error);
-    res.status(500).json({ error: 'Failed to get AI response' });
-  }
-});
-
-app.get('/test-js', (req, res) => {
-  res.header('Content-Type', 'text/javascript');
-  res.send('console.log("JS test successful");');
+    console.log('Received request:', req.body);
+    try {
+        const { messages, toxicityLevel } = req.body;
+        
+        console.log('Forwarding to Cerebras API:', {
+            model: 'llama3.1-8b',
+            messages,
+            toxicityLevel
+        });
+        
+        const response = await axios.post(`${BASE_URL}/chat/completions`, {
+            model: 'llama3.1-8b',
+            messages,
+            temperature: 0.7 + (toxicityLevel * 0.1),
+            max_tokens: 150
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`
+            }
+        });
+        
+        console.log('Received response:', response.data);
+        res.json(response.data);
+    } catch (error) {
+        console.error('Proxy error:', error);
+        res.status(500).json({ error: 'AI request failed' });
+    }
 });
 
 const PORT = process.env.PORT || 3001;

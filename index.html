@@ -272,7 +272,8 @@
     <!-- Achievement Popup Container -->
     <div id="achievement-container" class="fixed bottom-4 right-4 w-64 space-y-2"></div>
 
-    <script type="module" src="/ai-service.js"></script>
+    <script src="api-helper.js"></script>
+    <script src="ai-service.js"></script>
     <script>
         // Enhanced Game state with gamification elements
         const state = {
@@ -445,6 +446,9 @@
         const kindBadge = document.getElementById('kind-badge');
         const toxicBadge = document.getElementById('toxic-badge');
         const streakBadge = document.getElementById('streak-badge');
+
+        // Initialize AI Service with correct endpoint
+        const aiService = new AIService('http://localhost:3001/api');
 
         // Initialize the chat
         function initChat() {
@@ -774,9 +778,11 @@
             showTypingIndicator();
             
             try {
-                const response = await fetch('/ai-service.js')
-                .then(response => response.json())
-                .then(data => data.response);
+                const response = await aiService.getAIResponse(
+                    '', 
+                    state.toxicityLevel, 
+                    state.chatHistory
+                );
                 
                 // Remove indicators
                 removeTypingIndicator();
@@ -1026,9 +1032,7 @@
         restartBtn.addEventListener('click', restartConversation);
 
         // Initialize the app
-        document.addEventListener('DOMContentLoaded', () => {
-            initChat();
-        });
+        initChat();
     </script>
 </body>
 </html>
