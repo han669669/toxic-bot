@@ -273,11 +273,13 @@
     <div id="achievement-container" class="fixed bottom-4 right-4 w-64 space-y-2"></div>
 
     <script type="module">
-        import AIService from './ai-service.js';
+        import AIService from '/ai-service.js';
         
         document.addEventListener('DOMContentLoaded', () => {
-            const aiService = new AIService('http://localhost:3001/api');
-            window.aiService = aiService; // Make available globally if needed
+            const aiService = new AIService(process.env.VERCEL_URL ? 
+              `https://${process.env.VERCEL_URL}/api` : 
+              'http://localhost:3001/api');
+            window.aiService = aiService;
             initChat();
         });
 
