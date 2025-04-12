@@ -3,29 +3,20 @@
   "builds": [
     {
       "src": "backend-proxy.js",
-      "use": "@vercel/node",
-      "config": { "includeFiles": ["ai-service.js", "api-helper.js"] }
+      "use": "@vercel/node"
     },
     {
-      "src": "index.html",
+      "src": "*.{js,html}",
       "use": "@vercel/static",
       "config": {
         "headers": {
-          "**/*.js": {
-            "Content-Type": "text/javascript"
-          }
+          "*.js": {"Content-Type": "text/javascript"}
         }
       }
     }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "backend-proxy.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "index.html"
-    }
+    {"src": "/api/(.*)", "dest": "backend-proxy.js"},
+    {"src": "/(.*)", "dest": "index.html"}
   ]
 }
