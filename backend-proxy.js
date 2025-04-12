@@ -112,6 +112,11 @@ app.post('/api/chat', [validateRequest, limiter], async (req, res) => {
   }
 });
 
+app.get('/test-js', (req, res) => {
+  res.header('Content-Type', 'text/javascript');
+  res.send('console.log("JS test successful");');
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Proxy server running on port ${PORT}`);

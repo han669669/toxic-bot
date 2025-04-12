@@ -4,7 +4,7 @@
   "description": "",
   "main": "ai-service.js",
   "scripts": {
-    "vercel-build": "echo 'No build needed for static files'",
+    "vercel-build": "mkdir -p dist && cp -r *.js *.html dist/",
     "start:proxy": "node backend-proxy.js",
     "start:client": "serve -l 3000",
     "dev": "concurrently \"npm run start:proxy\" \"serve -l 3000\"",

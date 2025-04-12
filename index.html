@@ -272,15 +272,8 @@
     <!-- Achievement Popup Container -->
     <div id="achievement-container" class="fixed bottom-4 right-4 w-64 space-y-2"></div>
 
-    <script type="module">
-        import AIService from '/ai-service.js';
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            const aiService = new AIService(window.location.origin + '/api');
-            window.aiService = aiService;
-            initChat();
-        });
-
+    <script type="module" src="/ai-service.js"></script>
+    <script>
         // Enhanced Game state with gamification elements
         const state = {
             chatHistory: [
@@ -781,11 +774,9 @@
             showTypingIndicator();
             
             try {
-                const response = await aiService.getAIResponse(
-                    '', 
-                    state.toxicityLevel, 
-                    state.chatHistory
-                );
+                const response = await fetch('/ai-service.js')
+                .then(response => response.json())
+                .then(data => data.response);
                 
                 // Remove indicators
                 removeTypingIndicator();
@@ -1035,6 +1026,9 @@
         restartBtn.addEventListener('click', restartConversation);
 
         // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            initChat();
+        });
     </script>
 </body>
 </html>

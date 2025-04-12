@@ -6,17 +6,17 @@
       "use": "@vercel/node"
     },
     {
-      "src": "index.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.js",
+      "src": "ai-service.js",
       "use": "@vercel/static",
       "config": {
         "headers": {
           "Content-Type": "text/javascript"
         }
       }
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
