@@ -4,9 +4,6 @@
   "description": "",
   "main": "ai-service.js",
   "scripts": {
-    "start:proxy": "node backend-proxy.js",
-    "start:client": "python3 -m http.server 3000",
-    "dev": "concurrently \"npm run start:proxy\" \"npm run start:client\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -14,13 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^1.8.4",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "express-rate-limit": "^7.5.0",
-    "helmet": "^8.1.0"
+    "dotenv": "^16.5.0"
   },
-  "devDependencies": {
-    "concurrently": "^8.2.2",
-    "nodemon": "^3.1.9"
-  }
+  "devDependencies": {}
 }

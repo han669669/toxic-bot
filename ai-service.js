@@ -1,6 +1,6 @@
 class AIService {
-    constructor(baseUrl = 'http://localhost:3001/api') {
-        this.baseUrl = baseUrl;
+    constructor() {
+        // No base URL needed when calling relative Netlify function path
     }
 
     async getAIResponse(prompt, toxicityLevel, chatHistory) {
@@ -25,7 +25,7 @@ class AIService {
                 content: systemPrompts[toxicityLevel - 1]
             });
 
-            const response = await fetch(`${this.baseUrl}/chat`, {
+            const response = await fetch('/.netlify/functions/chat-proxy', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
