@@ -30,14 +30,14 @@ exports.handler = async (event, context) => {
         }
 
         console.log('Forwarding to Cerebras API from Netlify Function:', {
-            model: 'llama3.1-8b',
+            model: 'llama-4-scout-17b-16e-instruct',
             messages,
             toxicityLevel
         });
 
         // Make the request to the Cerebras API
         const response = await axios.post(`${BASE_URL}/chat/completions`, {
-            model: 'llama3.1-8b',
+            model: 'llama-4-scout-17b-16e-instruct',
             messages,
             temperature: 0.7 + (toxicityLevel * 0.1),
             max_tokens: 150
